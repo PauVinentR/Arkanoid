@@ -1,0 +1,334 @@
+<title>DestrozaMuros</title>
+<link rel="stylesheet" href="styles.css">
+
+<canvas></canvas>
+
+<img hidden id="sprite" src="./pala.png" alt="">
+<img hidden id="spri" src="./sprite.png" alt="">
+
+<body>
+    <div class="funcions">
+        <h3 class="vidas">Vidas: <span id="vidas"></span></h3>
+        <button class="button" id="restart">Restart</button>
+        <button class="pause" id="pause">Pause</button>
+        <button class="continue" id="continue">Continue</button>
+        <h1>Indicaciones</h1>
+        <div><b>Presionar "s":</b> Aumentarás la velocidad de la pala</div>
+        <div><b>Presionar "a":</b> Disminuirás la longitud de la pala</div>
+        <div><b>Presionar "d":</b> Aumentarás la longitud de la pala</div>
+        <div><b>Presionar (flecha izquierda):</b> Moverás la pala hacia la izquierda </div>
+        <div><b>Presionar (flecha derecha):</b> Moverás la pala hacia la derecha</div>
+    </div>
+</body>
+
+<script>
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    const vidasDisplay = document.getElementById("vidas");
+    let button = document.getElementById("restart");
+    let pause = document.getElementById("pause");
+    let cont = document.getElementById("continue");
+
+
+    let vidas = 3;
+    let die = false;
+
+    canvas.width = 460;
+    canvas.height = 420;
+
+    //Variables ladrillos
+    const numFilaMuros = 6;
+    const numColMuros = 13;
+
+    const muroWidth = 30;
+    const muroHeight = 14;
+
+    const marginTop = 80;
+    const marginLeft = 20;
+
+    const espaiEntreMuros = 2;
+
+    const muros = [];
+
+    var STATUS_MURO = {
+        ACTIU: 1,
+        DESTRUIT: 0
+    }
+
+    var COLORS = {
+        YEL: "#FFFC33",
+        RED: "#F00707",
+        GRE: "#03B000",
+        PUR: "#B60EC7"
+    }
+
+    for (let c = 0; c < numColMuros; c++) {
+        muros[c] = [];
+        for (let r = 0; r < numFilaMuros; r++) {
+            const muroX = c * (muroWidth + espaiEntreMuros) + marginLeft;
+            const muroY = r * (muroHeight + espaiEntreMuros) + marginTop;
+            
+            let colors = Math.floor(Math.random()*20)
+
+            muros[c][r] = {
+                x: muroX,
+                y: muroY,
+                status: STATUS_MURO.ACTIU,
+                color: colors
+            }
+        }
+    }
+
+    //Variables del joc
+    //Variables de la pilota
+    let x = canvas.width / 2
+    let y = canvas.height - 30
+    const radiPilota = 4;
+
+    //Velocitat pilota
+    let velx = 2;
+    let vely = -2;
+
+    let dx, dy;
+
+    //Variables de la pala
+    let palaH = 10;
+    let palaW = 50;
+
+    let palaX = (canvas.width - palaW) / 2
+    let palaY = canvas.height - palaH - 10
+
+    let dretaApretat = false;
+    let esquerraApretat = false;
+
+    let sensibilitat = 7;
+    let superpoder = false;
+    let petit = false;
+    let gran = false;
+
+    //Funcinos
+    function pintarPilota() {
+        ctx.beginPath()
+        ctx.arc(x, y, radiPilota, 0, Math.PI * 2)
+        ctx.fillStyle = '#000000'
+        ctx.fill()
+        ctx.closePath()
+    }
+    function pintarPala() {
+        const image = document.querySelector("#sprite");
+        ctx.drawImage(image, 97, 118, palaW, palaH, palaX, palaY, palaW, palaH);
+        //1. IMATGE
+        //2. CLIPX
+        //3. CLIPY
+        //4. TAMANY DE TALL X
+        //5. TAMANY DE TALL Y
+        //6. X
+        //7. Y
+        //8. TAMANY X
+        //9. TAMANY Y
+        /* ctx.fillStyle = '#000000'
+         ctx.fillRect(palaX, palaY, palaW, palaH)*/
+    }
+    function pintarMuros() {
+        for (let c = 0; c < numColMuros; c++) {
+            for (let r = 0; r < numFilaMuros; r++) {
+                const currentMuros = muros[c][r];
+
+                if (currentMuros.STATUS_MURO == STATUS_MURO.DESTRUIT){
+                    continue;
+                }
+                /*ctx.fillStyle = currentMuros.color;
+                ctx.rect(currentMuros.x,currentMuros.y, muroWidth, muroHeight);
+                ctx.fill();*/
+                const image = document.querySelector("#spri");
+                const clipX = currentMuros.color*16
+                ctx.drawImage(image, clipX, 0, 16, 8, currentMuros.x, currentMuros.y, muroWidth, muroHeight)
+            }
+        }
+    }
+
+    function movimentPilota() {
+
+        if (x + velx > canvas.width || x + velx < 0) {
+            velx = -velx;
+        }
+        if (y + vely < 0) {
+            vely = -vely;
+        }
+
+        const eixXPilotaIgual = x > palaX + 1 && x <= palaX + palaW + 1;
+        const eixYPilotaIgual = y + vely > palaY;
+
+        if (eixXPilotaIgual && eixYPilotaIgual) {
+            vely = -vely
+        } else if (y + vely > canvas.height) {
+            vidasper();
+            die = true;
+        }
+
+        x += velx
+        y += vely
+
+    }
+
+    function vidasper() {
+        if (vidas == 3 && die == true) {
+            console.log("You have lost")
+            vidas = 2;
+            vidasDisplay.innerHTML = vidas;
+            die = false;
+            x = canvas.width / 2
+            y = canvas.height - 30
+            velx = 2;
+            vely = -2;
+            vel();
+        } if (vidas == 2 && die == true) {
+            console.log("You have lost")
+            vidas = 1;
+            vidasDisplay.innerHTML = vidas;
+            die = false;
+            x = canvas.width / 2
+            y = canvas.height - 30
+            velx = 2;
+            vely = -2;
+            vel();
+        } if (vidas == 1 && die == true) {
+            vidas = 0;
+            vidasDisplay.innerHTML = vidas;
+            alert("GAME OVER")
+            velx = 0
+            vely = 0
+        }
+    }
+
+    function movimentPala(tecla) {
+        if (esquerraApretat && palaX > 0) {
+            palaX -= sensibilitat;
+        } else if (dretaApretat && palaX < canvas.width - palaW) {
+            palaX += sensibilitat;
+        }
+        if (superpoder == true) {
+            sensibilitat = 20;
+            setTimeout(function () {
+                sensibilitat = 7
+                superpoder = false;
+            }, 3000)
+        }
+        if (petit == true) {
+            palaW = 25
+            setTimeout(function () {
+                palaW = 50
+                petit = false;
+            }, 3000)
+        }
+        if (gran == true) {
+            palaW = 75
+            setTimeout(function () {
+                palaW = 50
+                gran = false;
+            }, 3000)
+        }
+
+    }
+    function colision() {
+
+    }
+    function borraPantalla() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    function initEvents() {
+        document.addEventListener('keydown', apretar)
+        document.addEventListener('keyup', soltar)
+
+        function apretar(event) {
+            if (event.key == 'ArrowRight') {
+                dretaApretat = true
+            } else if (event.key == 'ArrowLeft') {
+                esquerraApretat = true
+            }
+            if (event.key == 's') {
+                superpoder = true
+            }
+            if (event.key == 'a') {
+                petit = true;
+            }
+            if (event.key == 'd') {
+                gran = true;
+            }
+        }
+        function soltar(event) {
+            if (event.key == 'ArrowRight') {
+                dretaApretat = false
+            } else if (event.key == 'ArrowLeft') {
+                esquerraApretat = false
+            }
+            if (event.key == 's') {
+                superpoder = true
+            }
+            if (event.key == 'a') {
+                petit = true;
+            }
+            if (event.key == 'd') {
+                gran = true;
+            }
+        }
+    }
+
+    function dibuixa() {
+
+        borraPantalla();
+
+        pintarPilota()
+        pintarMuros()
+        pintarPala()
+
+        movimentPilota()
+        movimentPala()
+        colision()
+
+        window.requestAnimationFrame(dibuixa);
+
+        vidasDisplay.innerHTML = vidas;
+    }
+
+    dibuixa();
+    vel();
+    initEvents();
+    button.addEventListener('click', restart);
+    function restart() {
+        document.location.reload();
+    }
+    pause.addEventListener('click', p);
+    function p() {
+        dx = velx;
+        dy = vely;
+        velx = 0
+        vely = 0
+    }
+    cont.addEventListener('click', co);
+    function co() {
+        velx = dx
+        vely = dy
+    }
+    function vel() {
+        setTimeout(function () {
+            if (velx >= 0 && vely >= 0) {
+                velx += 2;
+                vely += 2;
+            }
+            if (velx < 0 && vely < 0) {
+                velx -= 2;
+                vely -= 2;
+            }
+            if (velx < 0 && vely >= 0) {
+                velx -= 2;
+                vely += 2;
+            }
+            if (velx >= 0 && vely < 0) {
+                velx += 2;
+                vely -= 2;
+            }
+        }, 3000)
+    }
+
+</script>
